@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "DDKit",
+        "repositoryURL": "https://github.com/kyouko-taiga/DDKit.git",
+        "state": {
+          "branch": null,
+          "revision": "1ccfa8e20d2b782adb9ab2670c9ecce30ad8d978",
+          "version": "2.0.0"
+        }
+      }
+    ]
+  },
+  "version": 1
+}
