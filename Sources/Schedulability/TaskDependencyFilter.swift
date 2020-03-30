@@ -66,7 +66,7 @@ final class TaskDependencyFilter: Morphism, MFDDSaturable {
       // Only keep take branches for which the time at which the task will be completed is lower or
       // equal to this morphism's deadline.
       var take: [ScheduleValue: ScheduleSet.Pointer] = [:]
-      for (arc, child) in pointer.pointee.take where arc.clock + task.wcet < deadline {
+      for (arc, child) in pointer.pointee.take where arc.clock + task.wcet <= deadline {
         take[arc] = next?.apply(on: child) ?? child
       }
 
