@@ -49,12 +49,12 @@ final class TaskScheduler: Morphism {
     } else if pointer.pointee.key == .core(id: coreID) {
       // Schedule the task on each path.
       var take: [ScheduleValue: ScheduleSet.Pointer] = [:]
+      let release = task.dependencies.isEmpty
+        ? task.release
+        : max(task.release, task.dependencies.map({ dep in dep.release + dep.wcet }).max()!)
 
       for (arc, child) in pointer.pointee.take {
         // Compute the ETS and ETA of the task.
-        let release = task.dependencies.isEmpty
-          ? task.release
-          : max(task.release, task.dependencies.map({ dep in dep.release + dep.wcet }).max()!)
         let ets = max(release, arc.clock)
         let eta = ets + task.wcet
 
@@ -70,7 +70,12 @@ final class TaskScheduler: Morphism {
 
         // Insert the computed task assignment into the decision diagram.
         let insert = factory.morphisms.insert(assignments: assignments)
-        take[ScheduleValue(coreID: coreID, clock: eta)] = insert.apply(on: child)
+        let arcKey = ScheduleValue(coreID: coreID, clock: eta)
+        if let node = take[arcKey] {
+          take[arcKey] = factory.union(node, insert.apply(on: child))
+        } else {
+          take[arcKey] = insert.apply(on: child)
+        }
       }
 
       result = factory.node(key: .core(id: coreID), take: take, skip: factory.zero.pointer)
@@ -84,7 +89,7 @@ final class TaskScheduler: Morphism {
     return result
   }
 
-  public func hash(into hasher: inout Hasher) {
+  func hash(into hasher: inout Hasher) {
     hasher.combine(task)
     hasher.combine(coreID)
   }
