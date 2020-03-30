@@ -51,14 +51,26 @@ final class TaskScheduler: Morphism {
       var take: [ScheduleValue: ScheduleSet.Pointer] = [:]
 
       for (arc, child) in pointer.pointee.take {
+        // Compute the ETS and ETA of the task.
+        let release = task.dependencies.isEmpty
+          ? task.release
+          : max(task.release, task.dependencies.map({ dep in dep.release + dep.wcet }).max()!)
+        let ets = max(release, arc.clock)
+        let eta = ets + task.wcet
+
+        // Make sure the task's deadline can be respected.
+        guard task.deadline == nil || task.deadline! >= eta
+          else { continue }
+
         // Build a core/clock pair that identifies the core associated with this morphism and the
         // earliest time at which the task can be scheduled on it.
-        // TODO: Take into account the release time of the task.
-        let assignments = [ScheduleKey.task(id: task.id): arc]
+        let assignments = [
+          ScheduleKey.task(id: task.id): ScheduleValue(coreID: arc.coreID, clock: ets)
+        ]
 
         // Insert the computed task assignment into the decision diagram.
         let insert = factory.morphisms.insert(assignments: assignments)
-        take[ScheduleValue(coreID: coreID, clock: arc.clock + task.wcet)] = insert.apply(on: child)
+        take[ScheduleValue(coreID: coreID, clock: eta)] = insert.apply(on: child)
       }
 
       result = factory.node(key: .core(id: coreID), take: take, skip: factory.zero.pointer)
