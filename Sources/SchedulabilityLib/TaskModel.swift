@@ -1,22 +1,22 @@
 import DDKit
 
 /// A task model.
-struct TaskModel {
+public struct TaskModel {
 
   /// The tasks contained in this model.
-  let tasks: [Int: Task]
+  public let tasks: [Int: Task]
 
-  init(tasks: Set<Task>) {
+  public init(tasks: Set<Task>) {
     self.tasks = Dictionary(uniqueKeysWithValues: tasks.map({ task in
       (key: task.id, value: task)
     }))
   }
 
-  init(tasks: () throws -> Set<Task>) rethrows {
+  public init(tasks: () throws -> Set<Task>) rethrows {
     self.init(tasks: try tasks())
   }
 
-  func schedulings(coreCount: Int, with factory: ScheduleSet.Factory) -> ScheduleSet {
+  public func schedulings(coreCount: Int, with factory: ScheduleSet.Factory) -> ScheduleSet {
     // Start with a DD that maps each core to an empty set of task and an initial clock.
     let initialMapping = Dictionary<ScheduleKey, ScheduleValue>(
       uniqueKeysWithValues: (0 ..< coreCount).map({ coreID in

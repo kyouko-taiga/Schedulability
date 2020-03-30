@@ -1,4 +1,4 @@
-import DDKit
+import SchedulabilityLib
 
 func print(scheduling: [ScheduleKey : ScheduleValue]) {
   let tasks = scheduling.keys.filter({ $0.isTaskID })
@@ -14,21 +14,21 @@ func print(scheduling: [ScheduleKey : ScheduleValue]) {
         scheduling[a]!.clock < scheduling[b]!.clock
       })
 
-    print(coreTasks.map({ String(describing: $0.taskID) }).joined(separator: ", "))
+    print(coreTasks.map({ "t\($0.taskID):\(scheduling[$0]!.clock)" }).joined(separator: ", "))
   }
 }
 
 let factory = ScheduleSet.Factory()
 
 let model = TaskModel {
-  let t2 = Task(id: 2, wcet: 1)
+  let t2 = Task(id: 2, release: 1, wcet: 1)
   let t1 = Task(id: 1, wcet: 3)
-  let t0 = Task(id: 0, wcet: 2, dependencies: [t2])
+  let t0 = Task(id: 0, deadline: 4, wcet: 2, dependencies: [t2])
 
   return [t0, t1, t2]
 }
 
-let schedulings = model.schedulings(coreCount: 1, with: factory)
+let schedulings = model.schedulings(coreCount: 2, with: factory)
 print("Number of possible schedulings: \(schedulings.count)")
 print("Number of nodes created: \(factory.createdCount)\n")
 
