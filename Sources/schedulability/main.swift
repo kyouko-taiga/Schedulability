@@ -1,7 +1,19 @@
+import Foundation
 import ArgumentParser
 import SchedulabilityLib
 
+struct RuntimeError: Error, CustomStringConvertible {
+  var description: String
+  
+  init(_ description: String) {
+    self.description = description
+  }
+}
+
 struct SchedulabilityCommand: ParsableCommand {
+  
+  @Argument(default: 2, help: "The number of cores to use to compute the schedulability")
+  var numCores: Int
   
   @Argument(default: nil, help: "The path to a configuration file describing a task model")
   var configurationFile: String
@@ -26,10 +38,16 @@ struct SchedulabilityCommand: ParsableCommand {
   }
   
   func run() throws {
+    // Throw a runtime error if the input JSON file cannot be read.
+    guard let input = try? Data(contentsOf: URL(fileURLWithPath: configurationFile),
+                                options: []) else {
+      throw RuntimeError("Couldn't read from '\(configurationFile)'!")
+    }
+
     let factory = ScheduleSet.Factory()
-    let model = try TaskModel(from: configurationFile)
+    let model = try TaskModel(from: input)
     
-    let schedulings = model.schedulings(coreCount: 2, with: factory)
+    let schedulings = model.schedulings(coreCount: numCores, with: factory)
     print("Number of possible schedulings: \(schedulings.count)")
     print("Number of nodes created: \(factory.createdCount)\n")
 

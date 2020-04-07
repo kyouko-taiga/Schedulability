@@ -1,23 +1,15 @@
 import Foundation
 
-struct RuntimeError: Error, CustomStringConvertible {
-  var description: String
-  
-  init(_ description: String) {
-    self.description = description
-  }
-}
-
 /// An error thrown when the JSON data used to initialize a TaskModel is invalid, incomplete, or
 /// contains a circular dependency between tasks.
-enum SerializationError: Error, CustomStringConvertible {
+public enum SerializationError: Error, CustomStringConvertible, Equatable {
 
   case invalidConfiguration
   case missing(task: String, field: String)
   case invalid(task: String, field: String)
   case circularDependency(task1: String, task2: String)
   
-  var description: String {
+  public var description: String {
     switch self {
     case .invalidConfiguration:
       return "Input configuration file does not follow a valid format"
@@ -36,16 +28,10 @@ extension TaskModel {
   
   /// Initialize a task model from a JSON configuration file.
   ///
-  /// - Parameter json: The path to a JSON file containing a desciption of the task model to
-  ///     initialize.
-  public init(from json: String) throws {
-    // Throw a runtime error if the input JSON file cannot be read.
-    guard let input = try? Data(contentsOf: URL(fileURLWithPath: json), options: []) else {
-      throw RuntimeError("Couldn't read from '\(json)'!")
-    }
-    
-    // Read the configuration file as a dictionary.
-    guard let jsonData = try JSONSerialization.jsonObject(with: input, options: [])
+  /// - Parameter json: JSON data describing the configuration of the task model to initialize.
+  public init(from json: Data) throws {
+    // Read the configuration JSON as a dictionary.
+    guard let jsonData = try JSONSerialization.jsonObject(with: json, options: [])
       as? [String: [String: Any]] else {
         throw SerializationError.invalidConfiguration
     }
