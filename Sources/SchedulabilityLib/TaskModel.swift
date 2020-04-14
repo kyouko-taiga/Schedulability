@@ -24,6 +24,12 @@ public struct TaskModel: Codable {
     }))
   }
 
+  public func encode(to encoder: Encoder) throws {
+    try self.tasks.values
+      .sorted(by: { a, b in a.id > b.id })
+      .encode(to: encoder)
+  }
+
   public func schedules(
     coreCount: Int,
     globalDeadline: Int,

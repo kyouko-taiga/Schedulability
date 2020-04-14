@@ -1,6 +1,16 @@
 /// The description of a task to be scheduled.
 public final class Task: Codable {
 
+  public enum CodingKeys: String, CodingKey {
+
+    case id
+    case release
+    case deadline
+    case wcet
+    case dependencies
+
+  }
+
   /// The task's ID.
   public let id: Int
 
@@ -57,6 +67,22 @@ public final class Task: Codable {
 
     // Add this task to the set of decoded tasks, so that it can be retrieved by ID.
     context.decodedTasks[self.id] = self
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: Task.CodingKeys.self)
+
+    try container.encode(id, forKey: .id)
+    try container.encode(release, forKey: .release)
+    try container.encode(wcet, forKey: .wcet)
+
+    if let deadline = self.deadline {
+      try container.encode(deadline, forKey: .deadline)
+    }
+
+    if !dependencies.isEmpty {
+      try container.encode(dependencies.map({ task in task.id }), forKey: .dependencies)
+    }
   }
 
 }
