@@ -1,54 +1,67 @@
+import Foundation
+import ArgumentParser
 import SchedulabilityLib
 
-func print(schedule: [ScheduleKey : ScheduleValue]) {
-  let tasks = schedule.keys.filter({ $0.isTaskID })
+struct RuntimeError: Error, CustomStringConvertible {
+  var description: String
 
-  // Print the current clock of each core.
-  for coreKey in schedule.keys.filter({ $0.isCoreID }).sorted() {
-    print("\(coreKey) @ \(schedule[coreKey]!.clock): ", terminator: "")
-
-    // Identify the tasks that are scheduled on the current core and order them according to the
-    // scheduled execution order.
-    let coreTasks = tasks.filter({ schedule[$0]?.coreID == coreKey.coreID })
-      .sorted(by: { a, b in
-        schedule[a]!.clock < schedule[b]!.clock
-      })
-
-    print(coreTasks.map({ "t\($0.taskID):\(schedule[$0]!.clock)" }).joined(separator: ", "))
+  init(_ description: String) {
+    self.description = description
   }
 }
 
-func main() {
-  let factory = ScheduleSet.Factory(bucketCapacity: 1 << 15)
+struct SchedulabilityCommand: ParsableCommand {
 
-  let model = TaskModel {
-    let t2 = Task(id: 2, release: 1, wcet: 1)
-    let t1 = Task(id: 1, wcet: 3)
-    let t0 = Task(id: 0, deadline: 4, wcet: 2, dependencies: [t2])
+  @Argument(default: 2, help: "The number of cores to use to compute the schedulability")
+  var numCores: Int
 
-    return [t0, t1, t2]
+  @Argument(default: nil, help: "The path to a configuration file describing a task model")
+  var configurationFile: String
+  
+  /// Pretty print a scheduling.
+  private func pprint(scheduling: [ScheduleKey : ScheduleValue]) {
+    let tasks = scheduling.keys.filter({ $0.isTaskID })
+
+    // Print the current clock of each core.
+    for coreKey in scheduling.keys.filter({ $0.isCoreID }).sorted() {
+      print("\(coreKey) @ \(scheduling[coreKey]!.clock): ", terminator: "")
+
+      // Identify the tasks that are scheduled on the current core and order them according to the
+      // scheduled execution order.
+      let coreTasks = tasks.filter({ scheduling[$0]?.coreID == coreKey.coreID })
+        .sorted(by: { a, b in
+          scheduling[a]!.clock < scheduling[b]!.clock
+        })
+
+      print(coreTasks.map({ "t\($0.taskID):\(scheduling[$0]!.clock)" }).joined(separator: ", "))
+    }
   }
 
-  var schedules: ScheduleSet = factory.zero
-  let elapsed = measure {
-    schedules = model.schedules(coreCount: 2, globalDeadline: 10, with: factory)
+  func run() throws {
+    // Throw a runtime error if the input JSON file cannot be read.
+    guard let input = try? Data(contentsOf: URL(fileURLWithPath: configurationFile),
+                                options: []) else {
+      throw RuntimeError("Couldn't read from '\(configurationFile)'!")
+    }
+
+    let factory = ScheduleSet.Factory()
+    let model = try TaskModel(from: input)
+
+    var schedules: ScheduleSet = factory.zero
+    let elapsed = measure {
+      schedules = model.schedules(coreCount: 2, globalDeadline: 10, with: factory)
+    }
+
+    print(
+      "Possible schedules: \(schedules.count) " +
+      "(\(factory.createdCount) nodes created in \(elapsed.humanFormat))")
+
+//    for scheduling in schedulings {
+//      pprint(scheduling: scheduling)
+//      print()
+//    }
   }
-
-  print(
-    "Possible schedules: \(schedules.count) " +
-    "(\(factory.createdCount) nodes created in \(elapsed.humanFormat))")
-
-//  // Print one schedule at random.
-//  if let schedule = schedules.randomElement() {
-//    print(schedule: schedule)
-//  }
-
-//  // Print all schedules.
-//  for schedule in schedules {
-//    print(schedule: schedule)
-//    print()
-//  }
 
 }
 
-main()
+SchedulabilityCommand.main()

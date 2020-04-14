@@ -1,0 +1,19 @@
+{
+    "t0": {
+        "id": 0,
+        "deadline": 4,
+        "wcet": 2,
+        "dependencies": ["t2"]
+    },
+
+    "t1": {
+        "id": 1,
+        "wcet": 3
+    },
+
+    "t2": {
+        "id": 2,
+        "release": 1,
+        "wcet": 1
+    }
+}
