@@ -1,5 +1,15 @@
 /// The description of a task to be scheduled.
-public final class Task {
+public final class Task: Codable {
+
+  public enum CodingKeys: String, CodingKey {
+
+    case id
+    case release
+    case deadline
+    case wcet
+    case dependencies
+
+  }
 
   /// The task's ID.
   public let id: Int
@@ -32,6 +42,47 @@ public final class Task {
     self.deadline = deadline
     self.wcet = wcet
     self.dependencies = dependencies
+  }
+
+  public init(from decoder: Decoder) throws {
+    guard let context = decoder.userInfo[TaskModel.decodingContext] as? TaskDecodingContext
+      else { throw TaskDecodingError.missingOrInvalidDecodingContext }
+    let container = try decoder.container(keyedBy: Task.CodingKeys.self)
+
+    self.id = try container.decode(Int.self, forKey: .id)
+    self.release = try container.decodeIfPresent(Int.self, forKey: .release) ?? 0
+    self.deadline = try container.decodeIfPresent(Int.self, forKey: .deadline)
+    self.wcet = try container.decode(Int.self, forKey: .wcet)
+
+    // Handle dependencies, if present.
+    if let dependencyIDs = try container.decodeIfPresent([Int].self, forKey: .dependencies) {
+      self.dependencies = try Set(dependencyIDs.map({ (taskID: Int) -> Task in
+        guard let task = context.decodedTasks[taskID]
+          else { throw TaskDecodingError.undefinedDependency }
+        return task
+      }))
+    } else {
+      self.dependencies = []
+    }
+
+    // Add this task to the set of decoded tasks, so that it can be retrieved by ID.
+    context.decodedTasks[self.id] = self
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: Task.CodingKeys.self)
+
+    try container.encode(id, forKey: .id)
+    try container.encode(release, forKey: .release)
+    try container.encode(wcet, forKey: .wcet)
+
+    if let deadline = self.deadline {
+      try container.encode(deadline, forKey: .deadline)
+    }
+
+    if !dependencies.isEmpty {
+      try container.encode(dependencies.map({ task in task.id }), forKey: .dependencies)
+    }
   }
 
 }
