@@ -4,36 +4,34 @@ import XCTest
 
 final class TaskModelJSONTests: XCTestCase {
   
-  func testInitTaskModelWithJSON() {
-    let json = """
-    {
-      "t0": {
-        "id": 0,
-        "wcet": 2,
-        "dependencies": ["t2", "t3"]
-      },
-      
-      "t1": {
-        "id": 1,
-        "wcet": 3,
-        "deadline": 4,
-        "dependencies": ["t3"]
-      },
-      
-      "t2": {
-        "id": 2,
-        "wcet": 1,
-        "release": 1
-      },
-      
-      "t3": {
-        "id": 3,
-        "wcet": 1
-      }
-    }
-    """.data(using: .utf8)
-    
-    let taskModel = try? TaskModel(from: json!)
+  func testInitFromJSON() {
+    let json =
+      """
+      [
+        {
+          "id": 3,
+          "wcet": 1
+        },
+        {
+          "id": 2,
+          "wcet": 1,
+          "release": 1
+        },
+        {
+          "id": 1,
+          "wcet": 3,
+          "deadline": 4,
+          "dependencies": [ 3 ]
+        },
+        {
+          "id": 0,
+          "wcet": 2,
+          "dependencies": [ 2, 3 ]
+        }
+      ]
+      """.data(using: .utf8)
+
+    let taskModel = try? TaskModel(fromJSON: json!)
     
     XCTAssertNotNil(taskModel)
     
@@ -61,81 +59,66 @@ final class TaskModelJSONTests: XCTestCase {
     XCTAssertEqual(task3?.id, 3)
     XCTAssertEqual(task3?.wcet, 1)
   }
-  
-  func testInvalidConfiguration() {
-    let json = """
-    {
-      "t0": [
-        {"id": 0}
-      ]
+
+  func testMissingContext() {
+    let json = "[ {} ]".data(using: .utf8)
+    let decoder = JSONDecoder()
+
+    XCTAssertThrowsError(try decoder.decode(TaskModel.self, from: json!)) { error in
+      XCTAssertEqual(
+        error as? TaskDecodingError,
+        TaskDecodingError.missingOrInvalidDecodingContext)
     }
-    """.data(using: .utf8)
+  }
+  
+  func testInvalidInput() {
+    let json =
+      """
+      {
+        [
+          { "id": 0 }
+        ]
+      }
+      """.data(using: .utf8)
     
-    XCTAssertThrowsError(try TaskModel(from: json!)) { error in
-      XCTAssertEqual(error as! SerializationError, SerializationError.invalidConfiguration)
+    XCTAssertThrowsError(try TaskModel(fromJSON: json!)) { error in
+      XCTAssert(error is DecodingError)
     }
   }
   
   func testMissingField() {
-    let json = """
-    {
-      "t0": {
-        "wcet": 1
-      }
-    }
-    """.data(using: .utf8)
-    
-    XCTAssertThrowsError(try TaskModel(from: json!)) { error in
-      XCTAssertEqual(error as! SerializationError,
-                     SerializationError.missing(task: "t0", field: "id"))
+    let json =
+      """
+      [
+        {
+          "wcet": 1
+        }
+      ]
+      """.data(using: .utf8)
+
+    XCTAssertThrowsError(try TaskModel(fromJSON: json!)) { error in
+      XCTAssert(error is DecodingError)
     }
   }
-  
-  func testInvalidField() {
-    let json = """
-    {
-      "t0": {
-        "id": 0,
-        "wcet": 1,
-        "dependencies": ["t2"]
-      },
 
-      "t1": {
-        "id": 1,
-        "wcet": 1
-      }
-    }
-    """.data(using: .utf8)
-    
-    XCTAssertThrowsError(try TaskModel(from: json!)) { error in
-      XCTAssertEqual(error as! SerializationError,
-                     SerializationError.invalid(task: "t0", field: "dependency t2"))
-    }
-  }
-  
-  func testCircularDepencency() {
-    let json = """
-    {
-      "t0": {
-        "id": 0,
-        "wcet": 1,
-        "dependencies": ["t1"]
-      },
+  func testUndefinedDependency() {
+    let json =
+      """
+      [
+        {
+          "id": 1,
+          "wcet": 1
+        },
+        {
+          "id": 0,
+          "wcet": 1,
+          "dependencies": [ 2 ]
+        }
+      ]
+      """.data(using: .utf8)
 
-      "t1": {
-        "id": 1,
-        "wcet": 1,
-        "dependencies": ["t0"]
-      }
-    }
-    """.data(using: .utf8)
-    
-    XCTAssertThrowsError(try TaskModel(from: json!)) { error in
-      let serializationError = error as! SerializationError
-      XCTAssert(
-        serializationError == SerializationError.circularDependency(task1: "t0", task2: "t1") ||
-        serializationError == SerializationError.circularDependency(task1: "t1", task2: "t0")
-      )
+    XCTAssertThrowsError(try TaskModel(fromJSON: json!)) { error in
+      XCTAssertEqual(error as? TaskDecodingError, TaskDecodingError.undefinedDependency)
     }
   }
   

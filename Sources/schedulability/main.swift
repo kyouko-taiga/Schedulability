@@ -39,14 +39,14 @@ struct SchedulabilityCommand: ParsableCommand {
 
   func run() throws {
     // Throw a runtime error if the input JSON file cannot be read.
-    guard let input = try? Data(contentsOf: URL(fileURLWithPath: configurationFile),
-                                options: []) else {
-      throw RuntimeError("Couldn't read from '\(configurationFile)'!")
-    }
+    guard let input = try? Data(contentsOf: URL(fileURLWithPath: configurationFile))
+      else { throw RuntimeError("Couldn't read from '\(configurationFile)'!") }
+
+    let decoder = JSONDecoder()
+    decoder.userInfo[TaskModel.decodingContext] = TaskDecodingContext()
+    let model = try decoder.decode(TaskModel.self, from: input)
 
     let factory = ScheduleSet.Factory()
-    let model = try TaskModel(from: input)
-
     var schedules: ScheduleSet = factory.zero
     let elapsed = measure {
       schedules = model.schedules(coreCount: 2, globalDeadline: 10, with: factory)

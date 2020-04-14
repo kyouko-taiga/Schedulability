@@ -1,7 +1,7 @@
 import DDKit
 
 /// A task model.
-public struct TaskModel {
+public struct TaskModel: Codable {
 
   /// The tasks contained in this model.
   public let tasks: [Int: Task]
@@ -14,6 +14,14 @@ public struct TaskModel {
 
   public init(tasks: () throws -> Set<Task>) rethrows {
     self.init(tasks: try tasks())
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    let tasks = try container.decode([Task].self)
+    self.tasks = Dictionary(uniqueKeysWithValues: tasks.map({ task in
+      (key: task.id, value: task)
+    }))
   }
 
   public func schedules(
