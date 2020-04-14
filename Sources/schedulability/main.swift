@@ -2,65 +2,123 @@ import Foundation
 import ArgumentParser
 import SchedulabilityLib
 
-struct RuntimeError: Error, CustomStringConvertible {
-  var description: String
+/// Pretty print a scheduling.
+private func pprint(schedule: [ScheduleKey : ScheduleValue]) {
+  let tasks = schedule.keys.filter({ $0.isTaskID })
 
-  init(_ description: String) {
-    self.description = description
+  // Print the current clock of each core.
+  for coreKey in schedule.keys.filter({ $0.isCoreID }).sorted() {
+    print("\(coreKey) @ \(schedule[coreKey]!.clock): ", terminator: "")
+
+    // Identify the tasks that are scheduled on the current core and order them according to the
+    // scheduled execution order.
+    let coreTasks = tasks.filter({ schedule[$0]?.coreID == coreKey.coreID })
+      .sorted(by: { a, b in
+        schedule[a]!.clock < schedule[b]!.clock
+      })
+
+    print(coreTasks.map({ "t\($0.taskID):\(schedule[$0]!.clock)" }).joined(separator: ", "))
   }
 }
 
 struct SchedulabilityCommand: ParsableCommand {
 
-  @Argument(default: 2, help: "The number of cores to use to compute the schedulability")
-  var numCores: Int
+  /// Command that computes the schedule set of a given task model.
+  struct Compute: ParsableCommand {
 
-  @Argument(default: nil, help: "The path to a configuration file describing a task model")
-  var configurationFile: String
-  
-  /// Pretty print a scheduling.
-  private func pprint(scheduling: [ScheduleKey : ScheduleValue]) {
-    let tasks = scheduling.keys.filter({ $0.isTaskID })
+    @Option(default: 2, help: "The number of available cores")
+    var coreCount: Int
 
-    // Print the current clock of each core.
-    for coreKey in scheduling.keys.filter({ $0.isCoreID }).sorted() {
-      print("\(coreKey) @ \(scheduling[coreKey]!.clock): ", terminator: "")
+    @Option(default: 1024, help: "The factory's bucket capacity")
+    var bucketCapacity: Int
 
-      // Identify the tasks that are scheduled on the current core and order them according to the
-      // scheduled execution order.
-      let coreTasks = tasks.filter({ scheduling[$0]?.coreID == coreKey.coreID })
-        .sorted(by: { a, b in
-          scheduling[a]!.clock < scheduling[b]!.clock
-        })
+    @Option(default: false, help: "Pretty-prints all found schedules")
+    var show: Bool
 
-      print(coreTasks.map({ "t\($0.taskID):\(scheduling[$0]!.clock)" }).joined(separator: ", "))
+    @Argument(default: nil, help: "The path to a task model")
+    var taskModel: String
+
+    func run() throws {
+      // Try to read the input task model.
+      guard let input = try? Data(contentsOf: URL(fileURLWithPath: taskModel))
+        else { fatalError("Couldn't read from '\(taskModel)'!") }
+
+      let decoder = JSONDecoder()
+      decoder.userInfo[TaskModel.decodingContext] = TaskDecodingContext()
+      let model = try decoder.decode(TaskModel.self, from: input)
+
+      let globalDeadline = model.tasks.values
+        .map({ task in task.deadline ?? task.release + task.wcet })
+        .max() ?? 0
+
+      let factory = ScheduleSet.Factory(bucketCapacity: bucketCapacity)
+      var schedules: ScheduleSet = factory.zero
+      let elapsed = measure {
+        schedules = model.schedules(
+          coreCount: coreCount,
+          globalDeadline: globalDeadline,
+          with: factory)
+      }
+
+      print(
+        "Possible schedules: \(schedules.count) " +
+        "(\(factory.createdCount) nodes created in \(elapsed.humanFormat))")
+
+      if show {
+        for schedule in schedules {
+          pprint(schedule: schedule)
+          print()
+        }
+      }
     }
+
   }
 
-  func run() throws {
-    // Throw a runtime error if the input JSON file cannot be read.
-    guard let input = try? Data(contentsOf: URL(fileURLWithPath: configurationFile))
-      else { throw RuntimeError("Couldn't read from '\(configurationFile)'!") }
+  /// Command that generates a random task model.
+  struct Generate: ParsableCommand {
 
-    let decoder = JSONDecoder()
-    decoder.userInfo[TaskModel.decodingContext] = TaskDecodingContext()
-    let model = try decoder.decode(TaskModel.self, from: input)
+    @Argument(default: nil, help: "The number of tasks in the model")
+    var taskCount: Int
 
-    let factory = ScheduleSet.Factory()
-    var schedules: ScheduleSet = factory.zero
-    let elapsed = measure {
-      schedules = model.schedules(coreCount: 2, globalDeadline: 10, with: factory)
+    @Option(default: 4, help: "Maximum number of dependencies")
+    var maxDepCount: Int
+
+    @Option(default: 0.1, help: "Probability of a task being a dependency to another")
+    var depProb: Float
+
+    @Argument(default: nil, help: "The path to the output file")
+    var output: String
+
+    func run() throws {
+      var tasks: [Task] = []
+      for i in (0 ..< taskCount).reversed() {
+        let dependencies = tasks
+          .shuffled()
+          .prefix(maxDepCount)
+          .filter({ _ in Float.random(in: 0.0 ..< 1.0) < depProb })
+
+        let release = Int.random(in: 0 ..< taskCount * 10)
+        let wcet = Int.random(in: 1 ..< 10)
+        let deadline = Int.random(in: release ..< (release + wcet + Int.random(in: 0 ..< 10)))
+        tasks.append(Task(
+          id: i,
+          release: release,
+          deadline: deadline,
+          wcet: wcet,
+          dependencies: Set(dependencies)))
+      }
+
+      let model = TaskModel(tasks: Set(tasks))
+      let encoder = JSONEncoder()
+      let data = try encoder.encode(model)
+      try data.write(to: URL(fileURLWithPath: self.output))
     }
 
-    print(
-      "Possible schedules: \(schedules.count) " +
-      "(\(factory.createdCount) nodes created in \(elapsed.humanFormat))")
-
-//    for scheduling in schedulings {
-//      pprint(scheduling: scheduling)
-//      print()
-//    }
   }
+
+  static let configuration = CommandConfiguration(
+    abstract: "Task schedulability utilities.",
+    subcommands: [Compute.self, Generate.self])
 
 }
 
