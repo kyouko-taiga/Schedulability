@@ -16,7 +16,11 @@ public struct TaskModel {
     self.init(tasks: try tasks())
   }
 
-  public func schedulings(coreCount: Int, with factory: ScheduleSet.Factory) -> ScheduleSet {
+  public func schedules(
+    coreCount: Int,
+    globalDeadline: Int,
+    with factory: ScheduleSet.Factory
+  ) -> ScheduleSet {
     // Start with a DD that maps each core to an empty set of task and an initial clock.
     let initialMapping = Dictionary<ScheduleKey, ScheduleValue>(
       uniqueKeysWithValues: (0 ..< coreCount).map({ coreID in
@@ -26,14 +30,18 @@ public struct TaskModel {
 
     var morphisms: [AnyMorphism<ScheduleSet>] = []
     for (taskID, task) in tasks {
-      // Create a filter that removes all schedulings where the task has already been executed.
+      // Create a filter that removes all schedules where the task has already been executed.
       let filterUnscheduled = factory.morphisms.saturate(
         factory.morphisms.filter(excludingKeys: [.task(id: taskID)]))
 
       // Create a morphism that schedule the task on each core.
       let schedule = factory.morphisms.union(
         of: (0 ..< coreCount).map({ (coreID: Int) -> TaskScheduler in
-          let morphism = TaskScheduler(task: task, coreID: coreID, factory: factory)
+          let morphism = TaskScheduler(
+            task: task,
+            coreID: coreID,
+            globalDeadline: globalDeadline,
+            factory: factory)
           return factory.morphisms.uniquify(morphism)
         }))
 
