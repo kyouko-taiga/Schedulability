@@ -14,7 +14,7 @@ final class TaskDependencyFilter: Morphism, MFDDSaturable {
   public let model: TaskModel
 
   /// The next morphism to apply once the first assignment has been processed.
-  private var next: ScheduleSet.SaturatedMorphism<TaskDependencyFilter>?
+  private var next: TaskDependencyFilter?
 
   /// The factory that creates the nodes handled by this morphism.
   public unowned let factory: ScheduleSet.Factory
@@ -28,12 +28,11 @@ final class TaskDependencyFilter: Morphism, MFDDSaturable {
     assert(dependencies.count > 0)
     self.dependencies = dependencies.sorted()
     self.next = dependencies.count > 1
-      ? factory.morphisms.saturate(
-        factory.morphisms.uniquify(TaskDependencyFilter(
+      ? factory.morphisms.uniquify(TaskDependencyFilter(
           dependencies: Array(self.dependencies.dropFirst()),
           deadline: deadline,
           model: model,
-          factory: factory)))
+          factory: factory))
       : nil
 
     self.deadline = deadline

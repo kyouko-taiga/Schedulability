@@ -24,6 +24,27 @@ public struct TaskModel: Codable {
     }))
   }
 
+  public var refined: TaskModel {
+    return TaskModel(tasks: Set(tasks.values.map({ (task: Task) -> Task in
+      let deadlineForDependencies = tasks.values
+        .filter({ $0.dependencies.contains(task) })
+        .map({ $0.release })
+        .min()
+
+      let deadline = task.deadline.map({
+        min($0, deadlineForDependencies ?? Int.max)
+      }) ?? deadlineForDependencies
+
+      return Task(
+        id: task.id,
+        release: task.release,
+        deadline: deadline,
+        wcet: task.wcet,
+        dependencies: task.dependencies
+      )
+    })))
+  }
+
   public func encode(to encoder: Encoder) throws {
     try self.tasks.values
       .sorted(by: { a, b in a.id > b.id })
@@ -45,8 +66,7 @@ public struct TaskModel: Codable {
     var morphisms: [AnyMorphism<ScheduleSet>] = []
     for (taskID, task) in tasks {
       // Create a filter that removes all schedules where the task has already been executed.
-      let filterUnscheduled = factory.morphisms.saturate(
-        factory.morphisms.filter(excludingKeys: [.task(id: taskID)]))
+      let filterUnscheduled = factory.morphisms.filter(excludingKeys: [.task(id: taskID)])
 
       // Create a morphism that schedule the task on each core.
       let schedule = factory.morphisms.union(

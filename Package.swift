@@ -8,7 +8,7 @@ let package = Package(
     .executable(name: "schedulability", targets: ["schedulability"]),
   ],
   dependencies: [
-    .package(url: "https://github.com/kyouko-taiga/DDKit.git", from: "2.0.0"),
+    .package(url: "https://github.com/kyouko-taiga/DDKit.git", .branch("optimizations/saturation")),
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "0.0.1"),
   ],
   targets: [

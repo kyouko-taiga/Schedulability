@@ -50,13 +50,12 @@ final class TaskDependencyConstraintLocator: Morphism {
         // obtained after filtering out paths that do not satisfy this task's dependencies.
         var take = pointer.pointee.take.mapValues(apply(on:))
         for (arc, child) in take {
-          let filter = factory.morphisms.saturate(
-            factory.morphisms.uniquify(
-              TaskDependencyFilter(
-                dependencies: task.dependencies.map({ $0.id }),
-                deadline: arc.clock,
-                model: model,
-                factory: factory)))
+          let filter = factory.morphisms.uniquify(
+            TaskDependencyFilter(
+              dependencies: task.dependencies.map({ $0.id }),
+              deadline: arc.clock,
+              model: model,
+              factory: factory))
           take[arc] = filter.apply(on: child)
         }
 

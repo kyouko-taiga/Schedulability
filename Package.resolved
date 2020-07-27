@@ -5,9 +5,9 @@
         "package": "DDKit",
         "repositoryURL": "https://github.com/kyouko-taiga/DDKit.git",
         "state": {
-          "branch": null,
-          "revision": "1ccfa8e20d2b782adb9ab2670c9ecce30ad8d978",
-          "version": "2.0.0"
+          "branch": "optimizations/saturation",
+          "revision": "f14c64574dccb7b2595e84b01b5a3bfc68d054a7",
+          "version": null
         }
       },
       {
@@ -15,8 +15,8 @@
         "repositoryURL": "https://github.com/apple/swift-argument-parser.git",
         "state": {
           "branch": null,
-          "revision": "8d31a0905c346a45c87773ad50862b5b3df8dff6",
-          "version": "0.0.4"
+          "revision": "9f04d1ff1afbccd02279338a2c91e5f27c45e93a",
+          "version": "0.0.5"
         }
       }
     ]

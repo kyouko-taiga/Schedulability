@@ -32,7 +32,7 @@ struct SchedulabilityCommand: ParsableCommand {
     @Option(default: 1024, help: "The factory's bucket capacity")
     var bucketCapacity: Int
 
-    @Option(default: false, help: "Pretty-prints all found schedules")
+    @Flag(help: "Pretty-prints all found schedules")
     var show: Bool
 
     @Argument(default: nil, help: "The path to a task model")
@@ -59,6 +59,12 @@ struct SchedulabilityCommand: ParsableCommand {
           globalDeadline: globalDeadline,
           with: factory)
       }
+
+      // Filter out the schedules that aren't feasibly (note that we can assume all schedulings
+      // were consistent by construction).
+      let keys = model.tasks.values.map({ task in ScheduleKey.task(id: task.id) })
+      let filter = factory.morphisms.filter(containingKeys: keys)
+      schedules = filter.apply(on: schedules)
 
       print(
         "Possible schedules: \(schedules.count) " +
@@ -98,8 +104,8 @@ struct SchedulabilityCommand: ParsableCommand {
           .filter({ _ in Float.random(in: 0.0 ..< 1.0) < depProb })
 
         let release = Int.random(in: 0 ..< taskCount * 10)
-        let wcet = Int.random(in: 1 ..< 10)
-        let deadline = Int.random(in: release ..< (release + wcet + Int.random(in: 0 ..< 10)))
+        let wcet = Int.random(in: 1 ..< 5)
+        let deadline = release + wcet + Int.random(in: 0 ..< 5)
         tasks.append(Task(
           id: i,
           release: release,

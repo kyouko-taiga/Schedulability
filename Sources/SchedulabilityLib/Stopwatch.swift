@@ -20,8 +20,8 @@ public struct Stopwatch {
       guard ns >= 1_000_000_000 else { return "\((ms * 100).rounded() / 100)ms" }
       guard ns >= 1_000_000_000_000 else { return "\((s * 100).rounded() / 100)s" }
 
-      var minutes = ns / 60_000_000_000_000
-      let seconds = ns % 60_000_000_000_000
+      var minutes = ns / 60_000_000_000
+      let seconds = (ns % 60_000_000_000) / 1_000_000_000
       guard minutes >= 60 else { return "\(minutes)m \(seconds)s" }
 
       let hours = minutes / 60
