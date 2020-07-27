@@ -1,0 +1,1 @@
+[{"release":68,"id":6,"deadline":72,"wcet":4},{"release":40,"id":5,"deadline":45,"wcet":3},{"release":37,"id":4,"deadline":42,"wcet":1},{"release":52,"id":3,"deadline":55,"wcet":2,"dependencies":[5]},{"release":69,"id":2,"deadline":73,"wcet":3},{"release":59,"id":1,"deadline":65,"wcet":4},{"release":63,"id":0,"deadline":70,"wcet":3,"dependencies":[1]}]

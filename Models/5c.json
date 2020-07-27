@@ -1,0 +1,1 @@
+[{"release":39,"id":4,"deadline":42,"wcet":2},{"release":19,"id":3,"deadline":21,"wcet":1},{"release":43,"id":2,"deadline":47,"wcet":3},{"release":1,"id":1,"deadline":7,"wcet":3},{"release":43,"id":0,"deadline":50,"wcet":4,"dependencies":[3,2]}]
